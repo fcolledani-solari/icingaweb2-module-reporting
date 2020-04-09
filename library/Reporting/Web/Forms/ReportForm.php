@@ -22,11 +22,29 @@ class ReportForm extends CompatForm
 
     protected $id;
 
+    protected $submitButtonLabel;
+
     public function setId($id)
     {
         $this->id = $id;
 
         return $this;
+    }
+
+    public function setSubmitButtonLabel(string $label)
+    {
+        $this->submitButtonLabel = $label;
+
+        return $this;
+    }
+
+    public function getSubmitButtonLabel(): string
+    {
+        if ($this->submitButtonLabel !== null) {
+            return $this->submitButtonLabel;
+        }
+
+        return $this->id === null ? t('Create Report') : t('Update Report');
     }
 
     protected function assemble()
@@ -74,7 +92,7 @@ class ReportForm extends CompatForm
         }
 
         $this->addElement('submit', 'submit', [
-            'label' => $this->id === null ? 'Create Report' : 'Update Report'
+            'label' => $this->getSubmitButtonLabel()
         ]);
 
         if ($this->id !== null) {

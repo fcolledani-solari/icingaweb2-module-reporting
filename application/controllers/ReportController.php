@@ -47,6 +47,34 @@ class ReportController extends Controller
         }
     }
 
+    public function cloneAction()
+    {
+        $this->assertPermission('reporting/reports');
+        $this->addTitleTab('Clone Report');
+
+        $values = [
+            'name'      => $this->report->getName() . ' Clone',
+            'timeframe' => (string) $this->report->getTimeframe()->getId(),
+        ];
+
+        $reportlet = $this->report->getReportlets()[0];
+
+        $values['reportlet'] = $reportlet->getClass();
+
+        foreach ($reportlet->getConfig() as $name => $value) {
+            $values[$name] = $value;
+        }
+
+        $form = (new ReportForm())
+            ->setSubmitButtonLabel(t('Clone Report'))
+            ->populate($values)
+            ->handleRequest(ServerRequest::fromGlobals());
+
+        $this->redirectForm($form, 'reporting/reports');
+
+        $this->addContent($form);
+    }
+
     public function editAction()
     {
         $this->assertPermission('reporting/reports');
@@ -189,6 +217,10 @@ class ReportController extends Controller
                 'Modify',
                 Url::fromPath('reporting/report/edit', ['id' => $reportId]),
                 'edit'
+            )->addLink(
+                'Clone',
+                Url::fromPath('reporting/report/clone', ['id' => $reportId]),
+                'clone'
             );
         }
 
