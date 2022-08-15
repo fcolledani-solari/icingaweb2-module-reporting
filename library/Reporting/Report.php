@@ -36,7 +36,7 @@ class Report
     protected $template;
 
     /**
-     * @param   int $id
+     * @param int $id
      *
      * @return  static
      *
@@ -71,34 +71,38 @@ class Report
             ->columns('*')
             ->where(['report_id = ?' => $id]);
 
-        $row = $db->select($select)->fetch();
+        $row = $db->select($select)->fetchAll();
 
         if ($row === false) {
             throw new Exception('No reportlets configured.');
         }
 
-        $reportlet = new Reportlet();
+        $reportlets = [];
+        foreach ($row as $reportletRow) {
+            $reportlet = new Reportlet();
 
-        $reportlet
-            ->setId($row->id)
-            ->setClass($row->class);
+            $reportlet
+                ->setId($reportletRow->id)
+                ->setClass($reportletRow->class);
 
-        $select = (new Sql\Select())
-            ->from('config')
-            ->columns('*')
-            ->where(['reportlet_id = ?' => $row->id]);
+            $select = (new Sql\Select())
+                ->from('config')
+                ->columns('*')
+                ->where(['reportlet_id = ?' => $reportletRow->id]);
 
-        $rows = $db->select($select)->fetchAll();
+            $rows = $db->select($select)->fetchAll();
 
-        $config = [];
+            $config = [];
 
-        foreach ($rows as $row) {
-            $config[$row->name] = $row->value;
+            foreach ($rows as $row) {
+                $config[$row->name] = $row->value;
+            }
+
+            $reportlet->setConfig($config);
+
+            $reportlets[] = $reportlet;
         }
-
-        $reportlet->setConfig($config);
-
-        $report->setReportlets([$reportlet]);
+        $report->setReportlets($reportlets);
 
         $select = (new Sql\Select())
             ->from('schedule')
@@ -132,7 +136,7 @@ class Report
     }
 
     /**
-     * @param   int $id
+     * @param int $id
      *
      * @return  $this
      */
@@ -152,7 +156,7 @@ class Report
     }
 
     /**
-     * @param   string  $name
+     * @param string $name
      *
      * @return  $this
      */
@@ -172,7 +176,7 @@ class Report
     }
 
     /**
-     * @param   string  $author
+     * @param string $author
      *
      * @return  $this
      */
@@ -192,7 +196,7 @@ class Report
     }
 
     /**
-     * @param   Timeframe   $timeframe
+     * @param Timeframe $timeframe
      *
      * @return  $this
      */
@@ -212,7 +216,7 @@ class Report
     }
 
     /**
-     * @param   Reportlet[] $reportlets
+     * @param Reportlet[] $reportlets
      *
      * @return  $this
      */
@@ -232,7 +236,7 @@ class Report
     }
 
     /**
-     * @param   Schedule    $schedule
+     * @param Schedule $schedule
      *
      * @return  $this
      */
