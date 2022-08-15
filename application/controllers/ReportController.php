@@ -14,6 +14,7 @@ use Icinga\Module\Reporting\Web\Forms\ScheduleForm;
 use Icinga\Module\Reporting\Web\Forms\SendForm;
 use Icinga\Module\Reporting\Web\Widget\CompatDropdown;
 use ipl\Html\Error;
+use ipl\Html\Form;
 use ipl\Web\Url;
 use ipl\Web\Widget\ActionBar;
 use Icinga\Util\Environment;
@@ -58,17 +59,25 @@ class ReportController extends Controller
             'timeframe' => (string) $this->report->getTimeframe()->getId(),
         ];
 
-        $reportlet = $this->report->getReportlets()[0];
+        foreach ($this->report->getReportlets() as $key => $reportlet) {
+            $values['reportlet'][$key + 1]['__class'] = $reportlet->getClass();
 
-        $values['reportlet'] = $reportlet->getClass();
-
-        foreach ($reportlet->getConfig() as $name => $value) {
-            $values[$name] = $value;
+            foreach ($reportlet->getConfig() as $name => $value) {
+                $values['reportlet'][$key + 1][$name] = $value;
+            }
         }
 
-        $form = new ReportForm();
-        $form->setId($this->report->getId());
+        $form = ReportForm::fromReport($this->report);
         $form->populate($values);
+        $form
+            ->on(ReportForm::ON_SUCCESS, function () {
+                $this->redirectNow('reporting/reports');
+            })
+            ->on(ReportForm::ON_SENT, function (Form $form) {
+                if ($form->getPressedSubmitElement() && $form->getPressedSubmitElement()->getName() === 'remove') {
+                    $this->redirectNow('reporting/reports');
+                }
+            });
         $form->handleRequest(ServerRequest::fromGlobals());
 
         $this->redirectForm($form, 'reporting/reports');
