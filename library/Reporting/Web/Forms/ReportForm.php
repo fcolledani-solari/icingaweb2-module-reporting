@@ -3,19 +3,17 @@
 
 namespace Icinga\Module\Reporting\Web\Forms;
 
-use Generator;
 use Icinga\Authentication\Auth;
 use Icinga\Module\Reporting\Database;
 use Icinga\Module\Reporting\Hook\ReportHook;
 use Icinga\Module\Reporting\ProvidedReports;
 use Icinga\Module\Reporting\Report;
 use Icinga\Module\Reporting\Web\Forms\Decorator\CompatDecorator;
-use ipl\Html\Attributes;
 use ipl\Html\Contract\FormSubmitElement;
 use ipl\Html\Form;
-use ipl\Html\FormElement\BaseFormElement;
-use ipl\Html\Html;
+use ipl\Html\FormElement\Collection;
 use ipl\Web\Compat\CompatForm;
+use ipl\Web\FormDecorator\IcingaFormDecorator;
 use ipl\Web\Widget\Icon;
 
 class ReportForm extends CompatForm
@@ -70,83 +68,66 @@ class ReportForm extends CompatForm
             'options' => [null => 'Please choose'] + $this->listTemplates()
         ]);
 
-        $this->addHtml(Html::tag('h1', null, 'Reportlets'));
+        $collection = new Collection('reportlet');
+        $collection->setLabel('Reportlets');
+        $collection->setAddTrigger('select', 'reportlet', [
+            'required' => false,
+            'label'    => 'Reportlet',
+            'options'  => [null => 'Please choose'] + $this->listReports(),
+            'class'    => 'autosubmit'
+        ]);
+        $collection->setRemoveTrigger('submitButton', 'remove_reportlet', [
+            'label'          => new Icon('trash'),
+            'class'          => 'btn-remove-reportlet',
+            'formnovalidate' => true,
+            'title'          => 'Remove Reportlet'
+        ]);
+        $collection->on(Collection::ON_LOAD, function ($group, $addElement, $removeElement) {
+            $group->setDefaultElementDecorator(new IcingaFormDecorator());
 
-        $reportlets = $this->getPopulatedValue('reportlet') ?? [['__class' => '']];
-        $hasEmptyReportlet = false;
+            $this->decorate($addElement);
 
-        foreach ($reportlets as $reportlet) {
-            if (empty($reportlet['__class'])) {
-                $hasEmptyReportlet = true;
-            }
-        }
+            $group
+                ->registerElement($addElement)
+                ->addHtml($addElement);
 
-        if (! $hasEmptyReportlet) {
-            $reportlets[] = ['__class' => ''];
-        }
+            $addElement->getWrapper()->ensureAssembled()->add($removeElement);
 
-        foreach ($reportlets as $key => $reportlet) {
-            if (isset($this->ignoredReportletId) && $key === $this->ignoredReportletId) {
-                continue;
-            }
-            if ($this->getPopulatedValue('remove_report_' . $key) !== null && sizeof($reportlets) > 1) {
-                continue;
-            }
-
-            $wrapper = Html::tag('div');
-            if ($key !== array_keys($reportlets)[count($reportlets) - 1]) {
-                $wrapper->addAttributes(Attributes::create(['class' => 'reportlet-container']));
-            }
-
-            /** @var FormSubmitElement $select */
-            $select = $this->createElement('select', "reportlet[$key][__class]", [
-                'required' => sizeof($reportlets) <= 1,
+            $innerCollection = new Collection('inner');
+            $innerCollection->setLabel('Inner Collection');
+            $innerCollection->setAddTrigger('select', 'reportlet', [
+                'required' => false,
                 'label'    => 'Reportlet',
-                'options'  => [null => 'Please choose'] + $this->listReports(),
+                'options'  => [null => 'Please choose'],
                 'class'    => 'autosubmit'
             ]);
-            $this
-                ->registerElement($select)
-                ->decorate($select);
-            $wrapper->addHtml($select);
+            $innerCollection->on(Collection::ON_LOAD, function ($group, $addElement) {
+                $group->setDefaultElementDecorator(new IcingaFormDecorator());
+                $group->addElement($addElement);
+            });
 
-            if ($key !== array_keys($reportlets)[count($reportlets) - 1]) {
-                $remove = $this->createElement('submitButton', 'remove_report_' . $key, [
-                    'label'          => new Icon('trash'),
-                    'class'          => 'btn-remove-reportlet',
-                    'formnovalidate' => true,
-                    'title'          => 'Remove Reportlet'
-                ]);
-                $this->registerElement($remove);
+            $group->registerElement($innerCollection);
+            $group->addHtml($innerCollection);
 
-                $select->getWrapper()->ensureAssembled()->add($remove);
-            }
-
-            $values = $this->getValues();
-            if (isset($values["reportlet[$key][__class]"])) {
+            if (isset($items['reportlet']) && ! empty($items['reportlet'])) {
                 $config = new Form();
 
                 /** @var ReportHook $reportlet */
-                $reportlet = new $values["reportlet[$key][__class]"];
+                $reportlet = new $items['reportlet'];
                 $reportlet->initConfigForm($config);
 
                 foreach ($config->getElements() as $element) {
-                    /** @var $element BaseFormElement */
-                    $element
-                        ->setName("reportlet[$key][" . $element->getName() . "]")
-                        ->setAttribute('class', 'tte');
+                    $this->decorate($element);
 
-                    $this
+                    $group
                         ->registerElement($element)
-                        ->decorate($element);
-
-
-                    $wrapper->addHtml($element);
+                        ->addHtml($element);
                 }
             }
+        });
 
-            $this->addHtml($wrapper);
-        }
+        $this->registerElement($collection);
+        $this->add($collection);
 
         $this->addElement('submit', 'submit', [
             'label' => $this->id === null ? 'Create Report' : 'Update Report'
@@ -201,20 +182,20 @@ class ReportForm extends CompatForm
             $db->delete('reportlet', ['report_id = ?' => $reportId]);
         }
 
-        foreach (array_filter($this->getPopulatedValue('reportlet')) as $reportlet) {
+        foreach ($values['reportlet'] as $reportlet) {
             array_walk($reportlet, function (&$value) {
                 if ($value === '') {
                     $value = null;
                 }
             });
 
-            if (empty($reportlet['__class'])) {
+            if (empty($reportlet['reportlet'])) {
                 continue;
             }
 
             $db->insert('reportlet', [
                 'report_id' => $reportId,
-                'class'     => $reportlet['__class'],
+                'class'     => $reportlet['reportlet'],
                 'ctime'     => $now,
                 'mtime'     => $now
             ]);
@@ -222,7 +203,7 @@ class ReportForm extends CompatForm
             $reportletId = $db->lastInsertId();
 
             foreach ($reportlet as $key => $value) {
-                if ($key === '__class') {
+                if ($key === 'reportlet') {
                     continue;
                 }
 
@@ -237,45 +218,5 @@ class ReportForm extends CompatForm
         }
 
         $db->commitTransaction();
-    }
-
-    public function populate($values)
-    {
-        $flatten = [];
-
-        foreach ($values as $name => $value) {
-            if (is_array($value)) {
-                foreach ($this->flattenArray($name, $value) as $flattenKey => $flattenValue) {
-                    $flatten[$flattenKey] = $flattenValue;
-                }
-            }
-
-            $flatten[$name] = $value;
-        }
-
-        parent::populate($flatten);
-
-        return $this;
-    }
-
-    /**
-     * Returns a generator containing the $values represented as strings
-     *
-     * @param       $key
-     * @param array $values
-     *
-     * @return Generator
-     */
-
-    protected function flattenArray($key, array $values) : Generator
-    {
-        foreach ($values as $_key => $_value) {
-            $effectiveKey = sprintf('%s[%s]', $key, $_key);
-            if (is_array($_value)) {
-                yield from $this->flattenArray($effectiveKey, $_value);
-            } else {
-                yield sprintf("%s", $effectiveKey) => $_value;
-            }
-        }
     }
 }
