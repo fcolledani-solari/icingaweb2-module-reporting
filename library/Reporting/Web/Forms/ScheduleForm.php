@@ -6,11 +6,13 @@ namespace Icinga\Module\Reporting\Web\Forms;
 use DateTime;
 use Icinga\Application\Version;
 use Icinga\Authentication\Auth;
+use Icinga\Module\Reporting\Actions\SendMail;
 use Icinga\Module\Reporting\Database;
 use Icinga\Module\Reporting\ProvidedActions;
 use Icinga\Module\Reporting\Report;
 use Icinga\Module\Reporting\Web\Flatpickr;
 use Icinga\Module\Reporting\Web\Forms\Decorator\CompatDecorator;
+use Icinga\Web\Notification;
 use ipl\Html\Contract\FormSubmitElement;
 use ipl\Html\Form;
 use ipl\Web\Compat\CompatForm;
@@ -112,6 +114,20 @@ class ScheduleForm extends CompatForm
         $this->addElement('submit', 'submit', [
             'label' => $this->id === null ? 'Create Schedule' : 'Update Schedule'
         ]);
+
+        $action = new SendMail();
+        $sendButton = $this->createElement('submit', 'send', [
+            'label'          => $action->getName(),
+            'formnovalidate' => true
+        ]);
+        $this->registerElement($sendButton);
+        $this->getElement('submit')->getWrapper()->prepend($sendButton);
+
+        if ($sendButton->hasBeenPressed()) {
+            $action = new SendMail();
+            $action->execute($this->report, $this->getValues());
+            Notification::success('Report sent successfully');
+        }
 
         if ($this->id !== null) {
             /** @var FormSubmitElement $removeButton */
