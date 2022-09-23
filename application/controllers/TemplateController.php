@@ -5,10 +5,13 @@ namespace Icinga\Module\Reporting\Controllers;
 
 use DateTime;
 use GuzzleHttp\Psr7\ServerRequest;
+use Icinga\Exception\MissingParameterException;
 use Icinga\Module\Reporting\Database;
 use Icinga\Module\Reporting\Web\Controller;
 use Icinga\Module\Reporting\Web\Forms\TemplateForm;
 use Icinga\Module\Reporting\Web\Widget\Template;
+use Icinga\Security\SecurityException;
+use ipl\Html\Form;
 use ipl\Sql\Select;
 
 class TemplateController extends Controller
@@ -58,6 +61,16 @@ class TemplateController extends Controller
 
         $form = (new TemplateForm())
             ->setTemplate($template);
+
+        $form
+            ->on(TemplateForm::ON_SUCCESS, function () {
+                $this->redirectNow('reporting/templates');
+            })
+            ->on(TemplateForm::ON_SENT, function (Form $form) {
+                if ($form->getPressedSubmitElement() && $form->getPressedSubmitElement()->getName() === 'remove') {
+                    $this->redirectNow('reporting/templates');
+                }
+            });
 
         $form->handleRequest(ServerRequest::fromGlobals());
 
