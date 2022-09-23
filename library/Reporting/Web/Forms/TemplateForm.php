@@ -3,6 +3,7 @@
 
 namespace Icinga\Module\Reporting\Web\Forms;
 
+use Exception;
 use Icinga\Authentication\Auth;
 use Icinga\Module\Reporting\Database;
 use Icinga\Module\Reporting\Web\Forms\Decorator\CompatDecorator;
@@ -15,17 +16,23 @@ class TemplateForm extends CompatForm
 {
     use Database;
 
-    /** @var bool Hack to disable the {@link onSuccess()} code upon deletion of the template */
-    protected $callOnSuccess;
-
     protected $template;
+
+    public function __construct()
+    {
+        $this->on(static::ON_SENT, function () {
+            if ($this->getPressedSubmitElement() && $this->getPressedSubmitElement()->getName() === 'remove') {
+                $this->getDb()->delete('template', ['id = ?' => $this->template->id]);
+            }
+        });
+    }
 
     public function getTemplate()
     {
         return $this->template;
     }
 
-    public function setTemplate($template)
+    public function setTemplate($template): TemplateForm
     {
         $this->template = $template;
 
@@ -128,26 +135,11 @@ class TemplateForm extends CompatForm
             ]);
             $this->registerElement($removeButton);
             $this->getElement('submit')->getWrapper()->prepend($removeButton);
-
-            if ($removeButton->hasBeenPressed()) {
-                $this->getDb()->delete('template', ['id = ?' => $this->template->id]);
-
-                // Stupid cheat because ipl/html is not capable of multiple submit buttons
-                $this->getSubmitButton()->setValue($this->getSubmitButton()->getButtonLabel());
-                $this->callOnSuccess = false;
-                $this->valid = true;
-
-                return;
-            }
         }
     }
 
     public function onSuccess()
     {
-        if ($this->callOnSuccess === false) {
-            return;
-        }
-
         ini_set('upload_max_filesize', '10M');
 
         $settings = $this->getValues();
@@ -219,7 +211,7 @@ class TemplateForm extends CompatForm
                     'mtime'    => $now
                 ], ['id = ?' => $this->template->id]);
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             die($e->getMessage());
         }
     }
