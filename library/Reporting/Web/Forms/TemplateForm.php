@@ -68,7 +68,7 @@ class TemplateForm extends CompatForm
         ]));
 
         if ($this->template !== null
-                && isset($this->template->settings['cover_page_background_image'])
+            && isset($this->template->settings['cover_page_background_image'])
         ) {
             $this->add(Html::tag(
                 'p',
@@ -171,7 +171,10 @@ class TemplateForm extends CompatForm
                     'mtime'    => $now
                 ]);
             } else {
-                if (isset($settings['remove_cover_page_background_image'])) {
+                if (
+                    isset($settings['remove_cover_page_background_image']) &&
+                    $settings['remove_cover_page_background_image'] === 'y'
+                ) {
                     unset($settings['cover_page_background_image']);
                     unset($settings['remove_cover_page_background_image']);
                 } elseif (! isset($settings['cover_page_background_image'])
@@ -180,7 +183,10 @@ class TemplateForm extends CompatForm
                     $settings['cover_page_background_image'] = $this->template->settings['cover_page_background_image'];
                 }
 
-                if (isset($settings['remove_cover_page_logo'])) {
+                if (
+                    isset($settings['remove_cover_page_logo']) &&
+                    $settings['remove_cover_page_logo'] === 'y'
+                ) {
                     unset($settings['cover_page_logo']);
                     unset($settings['remove_cover_page_logo']);
                 } elseif (! isset($settings['cover_page_logo'])
@@ -262,7 +268,7 @@ class TemplateForm extends CompatForm
                         'page_of'               => 'Page Number + Total Number of Pages',
                         'date'                  => 'Date'
                     ],
-                    'value' => 'report_title'
+                    'value'   => 'report_title'
                 ]);
                 break;
             case 'text':
