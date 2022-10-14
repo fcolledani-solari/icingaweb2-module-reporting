@@ -4,7 +4,7 @@
 
 namespace Icinga\Module\Reporting;
 
-use ipl\Sql\Select;
+use Icinga\Module\Reporting\Model;
 
 class Timeframe
 {
@@ -26,35 +26,18 @@ class Timeframe
     protected $end;
 
     /**
-     * @param int $id
-     *
-     * @return  static
-     *
-     * @throws  \Exception
+     * @param Model\Timeframe $model
+     * @return  Timeframe
      */
-    public static function fromDb($id)
+    public static function fromModel(Model\Timeframe $model): Timeframe
     {
         $timeframe = new static();
 
-        $db = $timeframe->getDb();
-
-        $select = (new Select())
-            ->from('timeframe')
-            ->columns('*')
-            ->where(['id = ?' => $id]);
-
-        $row = $db->select($select)->fetch();
-
-        if ($row === false) {
-            throw new \Exception('Timeframe not found');
-        }
-
-        $timeframe
-            ->setId($row->id)
-            ->setName($row->name)
-            ->setTitle($row->title)
-            ->setStart($row->start)
-            ->setEnd($row->end);
+        $timeframe->id = $model->id;
+        $timeframe->name = $model->name;
+        $timeframe->title = $model->title;
+        $timeframe->start = $model->start;
+        $timeframe->end = $model->end;
 
         return $timeframe;
     }
@@ -68,35 +51,11 @@ class Timeframe
     }
 
     /**
-     * @param int $id
-     *
-     * @return  $this
-     */
-    public function setId($id)
-    {
-        $this->id = $id;
-
-        return $this;
-    }
-
-    /**
      * @return  string
      */
     public function getName()
     {
         return $this->name;
-    }
-
-    /**
-     * @param string $name
-     *
-     * @return  $this
-     */
-    public function setName($name)
-    {
-        $this->name = $name;
-
-        return $this;
     }
 
     /**
@@ -108,18 +67,6 @@ class Timeframe
     }
 
     /**
-     * @param string $title
-     *
-     * @return  $this
-     */
-    public function setTitle($title)
-    {
-        $this->title = $title;
-
-        return $this;
-    }
-
-    /**
      * @return  string
      */
     public function getStart()
@@ -128,35 +75,11 @@ class Timeframe
     }
 
     /**
-     * @param string $start
-     *
-     * @return  $this
-     */
-    public function setStart($start)
-    {
-        $this->start = $start;
-
-        return $this;
-    }
-
-    /**
      * @return  string
      */
     public function getEnd()
     {
         return $this->end;
-    }
-
-    /**
-     * @param string $end
-     *
-     * @return  $this
-     */
-    public function setEnd($end)
-    {
-        $this->end = $end;
-
-        return $this;
     }
 
     public function getTimerange()

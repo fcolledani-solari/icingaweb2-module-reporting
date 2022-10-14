@@ -6,8 +6,8 @@ namespace Icinga\Module\Reporting;
 
 use Icinga\Module\Reporting\Hook\ActionHook;
 use ipl\Sql\Connection;
-use ipl\Sql\Select;
 use React\EventLoop\Factory as Loop;
+use ipl\Stdlib\Filter;
 
 function datetime_get_time_of_day(\DateTime $dateTime)
 {
@@ -53,20 +53,10 @@ class Scheduler
     protected function fetchSchedules()
     {
         $schedules = [];
-
-        $select = (new Select())
-            ->from('schedule')
-            ->columns('*');
-
-        foreach ($this->db->select($select) as $row) {
-            $schedule = (new Schedule())
-                ->setId((int) $row->id)
-                ->setReportId((int) $row->report_id)
-                ->setAction($row->action)
-                ->setConfig(\json_decode($row->config, true))
-                ->setStart((new \DateTime())->setTimestamp((int) $row->start / 1000))
-                ->setFrequency($row->frequency);
-
+        $select = Model\Schedule::on($this->db);
+        foreach ($select as $row) {
+            /** @var $select Model\Schedule */
+            $schedule = Schedule::fromModel($row);
             $schedules[$schedule->getChecksum()] = $schedule;
         }
 
@@ -112,8 +102,22 @@ class Scheduler
             /** @var ActionHook $action */
             $action = new $actionClass();
 
+            /** @var $report Model\Report */
+            $report = Model\Report::on($this->db)
+                ->with([
+                    'timeframe',
+                    'template',
+                    'reportlet',
+                    'reportlet.config',
+                    'schedule'
+                ])
+                ->filter(Filter::equal('id', $schedule->getReportId()))
+                ->first();
+
+            $report = Report::fromModel($report);
+
             $action->execute(
-                Report::fromDb($schedule->getReportId()),
+                $report,
                 $schedule->getConfig()
             );
         };

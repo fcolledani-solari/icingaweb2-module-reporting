@@ -7,9 +7,10 @@ namespace Icinga\Module\Reporting;
 use DateTime;
 use Exception;
 use Icinga\Module\Pdfexport\PrintableHtmlDocument;
+use Icinga\Module\Reporting\Model;
 use Icinga\Module\Reporting\Web\Widget\Template;
 use ipl\Html\HtmlDocument;
-use ipl\Sql;
+use ipl\Stdlib\Filter;
 
 class Report
 {
@@ -30,98 +31,65 @@ class Report
     /** @var Reportlet[] */
     protected $reportlets;
 
-    /** @var Schedule */
-    protected $schedule;
-
     /** @var Template */
     protected $template;
 
+    /** @var Schedule */
+    protected $schedule;
+
     /**
-     * @param int $id
+     * @param Model\Report $model
      *
-     * @return  static
-     *
-     * @throws  Exception
+     * @return Report
      */
-    public static function fromDb($id)
+    public static function fromModel(Model\Report $model): Report
     {
         $report = new static();
 
-        $db = $report->getDb();
+        $rs = $model::on($report->getDb())
+            ->with([
+                'timeframe',
+                'template',
+                'reportlet',
+                'reportlet.config',
+                'schedule'
+            ])
+            ->filter(Filter::equal('id', $model->id));
 
-        $select = (new Sql\Select())
-            ->from('report')
-            ->columns('*')
-            ->where(['id = ?' => $id]);
+        /** @var $result Model\Report */
+        $result = $rs->first();
 
-        $row = $db->select($select)->fetch();
-
-        if ($row === false) {
+        if ($result === null) {
             throw new Exception('Report not found');
         }
 
-        $report
-            ->setId($row->id)
-            ->setName($row->name)
-            ->setAuthor($row->author)
-            ->setTimeframe(Timeframe::fromDb($row->timeframe_id))
-            ->setTemplate(Template::fromDb($row->template_id));
+        $report->id = $model->id;
+        $report->name = $model->name;
+        $report->author = $model->author;
+        $report->timeframe = Timeframe::fromModel($model->timeframe);
+        $report->template = Template::fromModel($model->template);
 
-        $select = (new Sql\Select())
-            ->from('reportlet')
-            ->columns('*')
-            ->where(['report_id = ?' => $id]);
+        /** @var $reportlet Model\Reportlet */
+        $reportlet = Model\Reportlet::on($report->getDb())
+            ->filter(Filter::equal('report_id', $report->getId()))
+            ->first();
 
-        $row = $db->select($select)->fetch();
-
-        if ($row === false) {
+        if ($reportlet === null) {
             throw new Exception('No reportlets configured.');
         }
 
-        $reportlet = new Reportlet();
+        $reportlet = Reportlet::fromModel($reportlet);
 
-        $reportlet
-            ->setId($row->id)
-            ->setClass($row->class);
+        $report->reportlets = [$reportlet];
 
-        $select = (new Sql\Select())
-            ->from('config')
-            ->columns('*')
-            ->where(['reportlet_id = ?' => $row->id]);
+        /** @var $schedule Model\Schedule */
+        $schedule = Model\Schedule::on($report->getDb())
+            ->filter(Filter::equal('report_id', $report->getId()))
+            ->first();
 
-        $rows = $db->select($select)->fetchAll();
-
-        $config = [
-            'name'  => $report->getName(),
-            'id'    => $report->getId()
-        ];
-
-        foreach ($rows as $row) {
-            $config[$row->name] = $row->value;
-        }
-
-        $reportlet->setConfig($config);
-
-        $report->setReportlets([$reportlet]);
-
-        $select = (new Sql\Select())
-            ->from('schedule')
-            ->columns('*')
-            ->where(['report_id = ?' => $id]);
-
-        $row = $db->select($select)->fetch();
-
-        if ($row !== false) {
-            $schedule = new Schedule();
-
-            $schedule
-                ->setId($row->id)
-                ->setStart((new \DateTime())->setTimestamp((int) $row->start / 1000))
-                ->setFrequency($row->frequency)
-                ->setAction($row->action)
-                ->setConfig(json_decode($row->config, true));
-
-            $report->setSchedule($schedule);
+        if ($schedule !== null) {
+            $schedule = Schedule::fromModel($schedule);
+            $report->schedule = $schedule;
         }
 
         return $report;
@@ -136,35 +104,11 @@ class Report
     }
 
     /**
-     * @param int $id
-     *
-     * @return  $this
-     */
-    public function setId($id)
-    {
-        $this->id = $id;
-
-        return $this;
-    }
-
-    /**
      * @return  string
      */
     public function getName()
     {
         return $this->name;
-    }
-
-    /**
-     * @param string $name
-     *
-     * @return  $this
-     */
-    public function setName($name)
-    {
-        $this->name = $name;
-
-        return $this;
     }
 
     /**
@@ -176,35 +120,11 @@ class Report
     }
 
     /**
-     * @param string $author
-     *
-     * @return  $this
-     */
-    public function setAuthor($author)
-    {
-        $this->author = $author;
-
-        return $this;
-    }
-
-    /**
      * @return  Timeframe
      */
     public function getTimeframe()
     {
         return $this->timeframe;
-    }
-
-    /**
-     * @param Timeframe $timeframe
-     *
-     * @return  $this
-     */
-    public function setTimeframe(Timeframe $timeframe)
-    {
-        $this->timeframe = $timeframe;
-
-        return $this;
     }
 
     /**
@@ -236,35 +156,11 @@ class Report
     }
 
     /**
-     * @param Schedule $schedule
-     *
-     * @return  $this
-     */
-    public function setSchedule(Schedule $schedule)
-    {
-        $this->schedule = $schedule;
-
-        return $this;
-    }
-
-    /**
      * @return Template
      */
     public function getTemplate()
     {
         return $this->template;
-    }
-
-    /**
-     * @param Template $template
-     *
-     * @return $this
-     */
-    public function setTemplate($template)
-    {
-        $this->template = $template;
-
-        return $this;
     }
 
     public function providesData()

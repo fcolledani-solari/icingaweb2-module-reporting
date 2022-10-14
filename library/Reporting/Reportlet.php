@@ -4,8 +4,12 @@
 
 namespace Icinga\Module\Reporting;
 
+use ipl\Stdlib\Filter;
+
 class Reportlet
 {
+    use Database;
+
     /** @var int */
     protected $id;
 
@@ -16,23 +20,50 @@ class Reportlet
     protected $config;
 
     /**
+     * @param Model\Reportlet $model
+     *
+     * @return Reportlet
+     *
+     */
+    public static function fromModel(Model\Reportlet $model)
+    {
+        $reportlet = new static();
+
+        $reportlet->id = $model->id;
+        $reportlet->class = $model->class;
+
+        $result = Model\Report::on($reportlet->getDb())
+            ->with([
+                'reportlet.config',
+            ])
+            ->filter(Filter::equal('id', $model->report_id));
+
+        /** @var $report Model\Report */
+        $report = $result->first();
+
+        $row = $result
+            ->filter(Filter::equal('reportlet.config.reportlet_id', $reportlet->getId()));
+
+        $config = [
+            'name' => $report->name,
+            'id'   => $report->id
+        ];
+
+        foreach ($row as $r) {
+            $config[$r->reportlet->config->name] = $r->reportlet->config->value;
+        }
+
+        $reportlet->config = $config;
+
+        return $reportlet;
+    }
+
+    /**
      * @return  int
      */
     public function getId()
     {
         return $this->id;
-    }
-
-    /**
-     * @param int $id
-     *
-     * @return  $this
-     */
-    public function setId($id)
-    {
-        $this->id = $id;
-
-        return $this;
     }
 
     /**
@@ -44,35 +75,11 @@ class Reportlet
     }
 
     /**
-     * @param string $class
-     *
-     * @return  $this
-     */
-    public function setClass($class)
-    {
-        $this->class = $class;
-
-        return $this;
-    }
-
-    /**
      * @return  array
      */
     public function getConfig()
     {
         return $this->config;
-    }
-
-    /**
-     * @param array $config
-     *
-     * @return  $this
-     */
-    public function setConfig($config)
-    {
-        $this->config = $config;
-
-        return $this;
     }
 
     /**

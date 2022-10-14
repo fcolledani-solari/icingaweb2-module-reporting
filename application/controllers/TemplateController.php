@@ -7,10 +7,12 @@ namespace Icinga\Module\Reporting\Controllers;
 use DateTime;
 use GuzzleHttp\Psr7\ServerRequest;
 use Icinga\Module\Reporting\Database;
+use Icinga\Module\Reporting\Model;
 use Icinga\Module\Reporting\Web\Controller;
 use Icinga\Module\Reporting\Web\Forms\TemplateForm;
 use Icinga\Module\Reporting\Web\Widget\Template;
 use ipl\Sql\Select;
+use ipl\Stdlib\Filter;
 
 class TemplateController extends Controller
 {
@@ -20,7 +22,12 @@ class TemplateController extends Controller
     {
         $this->createTabs()->activate('preview');
 
-        $template = Template::fromDb($this->params->getRequired('id'));
+        /** @var $template Model\Template */
+        $template = Model\Template::on($this->getDb())
+            ->filter(Filter::equal('id', $this->params->getRequired('id')))
+            ->first();
+
+        $template = Template::fromModel($template);
 
         if ($template === null) {
             throw new \Exception('Template not found');

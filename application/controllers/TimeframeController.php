@@ -6,9 +6,11 @@ namespace Icinga\Module\Reporting\Controllers;
 
 use GuzzleHttp\Psr7\ServerRequest;
 use Icinga\Module\Reporting\Database;
+use Icinga\Module\Reporting\Model;
 use Icinga\Module\Reporting\Timeframe;
 use Icinga\Module\Reporting\Web\Controller;
 use Icinga\Module\Reporting\Web\Forms\TimeframeForm;
+use ipl\Stdlib\Filter;
 
 class TimeframeController extends Controller
 {
@@ -19,7 +21,12 @@ class TimeframeController extends Controller
 
     public function init()
     {
-        $this->timeframe = Timeframe::fromDb($this->params->getRequired('id'));
+        /** @var $timeframe Model\Timeframe */
+        $timeframe = Model\Timeframe::on($this->getDb())
+            ->filter(Filter::equal('id', $this->params->getRequired('id')))
+            ->first();
+
+        $this->timeframe = Timeframe::fromModel($timeframe);
     }
 
     public function editAction()

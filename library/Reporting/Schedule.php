@@ -24,24 +24,26 @@ class Schedule
     /** @var array */
     protected $config;
 
+    public static function fromModel(Model\Schedule $model): Schedule
+    {
+        $schedule = new static();
+
+        $schedule->id = $model->id;
+        $schedule->reportId = $model->report_id;
+        $schedule->start = (new \DateTime())->setTimestamp((int) $model->start / 1000);
+        $schedule->frequency = $model->frequency;
+        $schedule->action = $model->action;
+        $schedule->config = json_decode($model->config, true);
+
+        return $schedule;
+    }
+
     /**
      * @return  int
      */
     public function getId()
     {
         return $this->id;
-    }
-
-    /**
-     * @param int $id
-     *
-     * @return  $this
-     */
-    public function setId($id)
-    {
-        $this->id = $id;
-
-        return $this;
     }
 
     /**
@@ -53,35 +55,11 @@ class Schedule
     }
 
     /**
-     * @param int $id
-     *
-     * @return  $this
-     */
-    public function setReportId($id)
-    {
-        $this->reportId = $id;
-
-        return $this;
-    }
-
-    /**
      * @return  \DateTime
      */
     public function getStart()
     {
         return $this->start;
-    }
-
-    /**
-     * @param \DateTime $start
-     *
-     * @return  $this
-     */
-    public function setStart(\DateTime $start)
-    {
-        $this->start = $start;
-
-        return $this;
     }
 
     /**
@@ -93,18 +71,6 @@ class Schedule
     }
 
     /**
-     * @param string $frequency
-     *
-     * @return  $this
-     */
-    public function setFrequency($frequency)
-    {
-        $this->frequency = $frequency;
-
-        return $this;
-    }
-
-    /**
      * @return  string
      */
     public function getAction()
@@ -113,35 +79,11 @@ class Schedule
     }
 
     /**
-     * @param string $action
-     *
-     * @return  $this
-     */
-    public function setAction($action)
-    {
-        $this->action = $action;
-
-        return $this;
-    }
-
-    /**
      * @return  array
      */
     public function getConfig()
     {
         return $this->config;
-    }
-
-    /**
-     * @param array $config
-     *
-     * @return  $this
-     */
-    public function setConfig(array $config)
-    {
-        $this->config = $config;
-
-        return $this;
     }
 
     /**
