@@ -8,13 +8,17 @@ use GuzzleHttp\Psr7\ServerRequest;
 use Icinga\Application\Hook;
 use Icinga\Module\Pdfexport\ProvidedHook\Pdfexport;
 use Icinga\Module\Reporting\Database;
+use Icinga\Module\Reporting\Model;
 use Icinga\Module\Reporting\Report;
+use Icinga\Module\Reporting\Reportlet;
+use Icinga\Module\Reporting\Schedule;
 use Icinga\Module\Reporting\Web\Controller;
 use Icinga\Module\Reporting\Web\Forms\ReportForm;
 use Icinga\Module\Reporting\Web\Forms\ScheduleForm;
 use Icinga\Module\Reporting\Web\Forms\SendForm;
 use Icinga\Module\Reporting\Web\Widget\CompatDropdown;
 use ipl\Html\Error;
+use ipl\Stdlib\Filter;
 use ipl\Web\Url;
 use ipl\Web\Widget\ActionBar;
 use Icinga\Util\Environment;
@@ -28,7 +32,50 @@ class ReportController extends Controller
 
     public function init()
     {
-        $this->report = Report::fromDb($this->params->getRequired('id'));
+        $rs = Model\Report::on($this->getDb())
+            ->with([
+                'timeframe',
+                'template',
+                'reportlet',
+                'reportlet.config',
+                'schedule'
+            ])
+            ->filter(Filter::equal('id', $this->params->getRequired('id')));
+
+        $result = $rs->first();
+
+        $report = Report::fromModel($result);
+
+        $reportlet = new Reportlet();
+
+        $reportlet->class = $result->reportlet->class;
+        $reportlet->id = $result->reportlet->id;
+
+        $row = $rs
+            ->filter(Filter::equal('reportlet.config.reportlet_id', $report->reportlet->id));
+
+        $config = [];
+        foreach ($row as $r) {
+            $config[$r->reportlet->config->name] = $r->reportlet->config->value;
+        }
+
+        $reportlet->config = $config;
+
+        $report->setReportlets([$reportlet]);
+
+        if ($result->schedule->config !== null) {
+            $schedule = new Schedule();
+
+            $schedule
+                ->setId($result->schedule->id)
+                ->setStart((new \DateTime())->setTimestamp((int) $result->schedule->start / 1000))
+                ->setFrequency($result->schedule->frequency)
+                ->setAction($result->schedule->action)
+                ->setConfig(json_decode($result->schedule->config, true));
+
+            $report->setSchedule($schedule);
+        }
+        $this->report = $report;
     }
 
     public function indexAction()

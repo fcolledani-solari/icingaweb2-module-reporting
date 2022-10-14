@@ -7,13 +7,21 @@ namespace Icinga\Module\Reporting;
 class Reportlet
 {
     /** @var int */
-    protected $id;
+    //protected $id;
 
     /** @var string */
-    protected $class;
+    //protected $class;
 
-    /** @var array */
-    protected $config;
+    /**
+     * @param Model\Reportlet $model
+     *
+     * @return Model\Reportlet
+     *
+     */
+    public static function fromModel(Model\Reportlet $model)
+    {
+        return $model;
+    }
 
     /**
      * @return  int
@@ -21,18 +29,6 @@ class Reportlet
     public function getId()
     {
         return $this->id;
-    }
-
-    /**
-     * @param int $id
-     *
-     * @return  $this
-     */
-    public function setId($id)
-    {
-        $this->id = $id;
-
-        return $this;
     }
 
     /**
@@ -44,35 +40,11 @@ class Reportlet
     }
 
     /**
-     * @param string $class
-     *
-     * @return  $this
-     */
-    public function setClass($class)
-    {
-        $this->class = $class;
-
-        return $this;
-    }
-
-    /**
      * @return  array
      */
     public function getConfig()
     {
         return $this->config;
-    }
-
-    /**
-     * @param array $config
-     *
-     * @return  $this
-     */
-    public function setConfig($config)
-    {
-        $this->config = $config;
-
-        return $this;
     }
 
     /**

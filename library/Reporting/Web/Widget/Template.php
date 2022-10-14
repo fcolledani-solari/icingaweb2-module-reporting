@@ -7,8 +7,8 @@ namespace Icinga\Module\Reporting\Web\Widget;
 use Icinga\Module\Reporting\Common\Macros;
 use Icinga\Module\Reporting\Database;
 use ipl\Html\BaseHtmlElement;
-use ipl\Html\Html;
-use ipl\Sql\Select;
+use ipl\Orm\Model;
+use ipl\Stdlib\Filter;
 
 class Template extends BaseHtmlElement
 {
@@ -30,6 +30,9 @@ class Template extends BaseHtmlElement
 
     protected $preview;
 
+    /** @var Template */
+    protected $model;
+
     public static function getDataUrl(array $image = null)
     {
         if (empty($image)) {
@@ -39,39 +42,32 @@ class Template extends BaseHtmlElement
         return sprintf('data:%s;base64,%s', $image['mime_type'], $image['content']);
     }
 
-    public static function fromDb($id)
+    public static function fromModel(Model $model)
     {
         $template = new static();
 
-        $select = (new Select())
-            ->from('template')
-            ->columns('*')
-            ->where(['id = ?' => $id]);
-
-        $row = $template->getDb()->select($select)->fetch();
-
-        if ($row === false) {
+        if ($model->settings === null) {
             return null;
         }
 
-        $row->settings = json_decode($row->settings, true);
+        $model->settings = json_decode($model->settings, true);
 
         $coverPage = (new CoverPage())
-            ->setColor($row->settings['color'])
-            ->setTitle($row->settings['title']);
+            ->setColor($model->settings['color'])
+            ->setTitle($model->settings['title']);
 
-        if (isset($row->settings['cover_page_background_image'])) {
-            $coverPage->setBackgroundImage($row->settings['cover_page_background_image']);
+        if (isset($model->settings['cover_page_background_image'])) {
+            $coverPage->setBackgroundImage($model->settings['cover_page_background_image']);
         }
 
-        if (isset($row->settings['cover_page_logo'])) {
-            $coverPage->setLogo($row->settings['cover_page_logo']);
+        if (isset($model->settings['cover_page_logo'])) {
+            $coverPage->setLogo($model->settings['cover_page_logo']);
         }
 
         $template
             ->setCoverPage($coverPage)
-            ->setHeader(new HeaderOrFooter(HeaderOrFooter::HEADER, $row->settings))
-            ->setFooter(new HeaderOrFooter(HeaderOrFooter::FOOTER, $row->settings));
+            ->setHeader(new HeaderOrFooter(HeaderOrFooter::HEADER, $model->settings))
+            ->setFooter(new HeaderOrFooter(HeaderOrFooter::FOOTER, $model->settings));
 
         return $template;
     }
