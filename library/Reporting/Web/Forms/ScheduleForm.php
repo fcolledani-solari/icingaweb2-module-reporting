@@ -36,13 +36,13 @@ class ScheduleForm extends CompatForm
         if ($schedule !== null) {
             $this->setId($schedule->getId());
 
-            $values = [
-                    'start'     => $schedule->getStart()->format('Y-m-d\\TH:i:s'),
-                    'frequency' => $schedule->getFrequency(),
-                    'action'    => $schedule->getAction()
-                ] + $schedule->getConfig();
+            $config = $schedule->getConfig();
+            $start = (new DateTime())->setTimestamp($config['start']);
 
-            $this->populate($values);
+            $config['start'] = $start;
+            $config['action'] = $schedule->getAction();
+
+            $this->populate($config);
         }
 
         return $this;
@@ -71,12 +71,14 @@ class ScheduleForm extends CompatForm
             $this->addElement('localDateTime', 'start', [
                 'required'    => true,
                 'label'       => t('Start'),
+                'value'       => new DateTime(),
                 'placeholder' => t('Choose date and time')
             ]);
         } else {
             $this->addDecoratedElement((new Flatpickr())->setAllowInput(false), 'text', 'start', [
                 'required'    => true,
                 'label'       => t('Start'),
+                'value'       => new DateTime(),
                 'placeholder' => t('Choose date and time')
             ]);
         }

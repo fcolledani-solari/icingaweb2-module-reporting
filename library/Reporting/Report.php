@@ -8,6 +8,7 @@ use DateTime;
 use Exception;
 use Icinga\Module\Pdfexport\PrintableHtmlDocument;
 use Icinga\Module\Reporting\Web\Widget\Template;
+use Icinga\Util\Json;
 use ipl\Html\HtmlDocument;
 use ipl\Sql;
 
@@ -112,14 +113,12 @@ class Report
         $row = $db->select($select)->fetch();
 
         if ($row !== false) {
-            $schedule = new Schedule();
+            $config = Json::decode($row->config, true);
+            $config['frequency'] = $row->frequency;
+            $config['start'] = (int) $row->start / 1000;
 
-            $schedule
-                ->setId($row->id)
-                ->setStart((new \DateTime())->setTimestamp((int) $row->start / 1000))
-                ->setFrequency($row->frequency)
-                ->setAction($row->action)
-                ->setConfig(json_decode($row->config, true));
+            $schedule = new Schedule("Schedule{$row->id}", $row->report_id, $row->action, $config);
+            $schedule->setId($row->id);
 
             $report->setSchedule($schedule);
         }
