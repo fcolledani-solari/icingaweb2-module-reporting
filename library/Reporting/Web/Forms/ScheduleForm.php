@@ -71,14 +71,12 @@ class ScheduleForm extends CompatForm
             $this->addElement('localDateTime', 'start', [
                 'required'    => true,
                 'label'       => t('Start'),
-                'value'       => new DateTime(),
                 'placeholder' => t('Choose date and time')
             ]);
         } else {
             $this->addDecoratedElement((new Flatpickr())->setAllowInput(false), 'text', 'start', [
                 'required'    => true,
                 'label'       => t('Start'),
-                'value'       => new DateTime(),
                 'placeholder' => t('Choose date and time')
             ]);
         }
