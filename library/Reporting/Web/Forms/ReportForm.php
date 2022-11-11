@@ -10,6 +10,7 @@ use Icinga\Module\Reporting\ProvidedReports;
 use Icinga\Module\Reporting\Web\Forms\Decorator\CompatDecorator;
 use ipl\Html\Contract\FormSubmitElement;
 use ipl\Html\Form;
+use ipl\Validator\CallbackValidator;
 use ipl\Web\Compat\CompatForm;
 
 class ReportForm extends CompatForm
@@ -34,8 +35,22 @@ class ReportForm extends CompatForm
         $this->setDefaultElementDecorator(new CompatDecorator());
 
         $this->addElement('text', 'name', [
-            'required' => true,
-            'label'    => 'Name'
+            'required'  => true,
+            'label'     => 'Name',
+            'validators' => [
+                'Callback' => function ($value, $validator) {
+                    /** @var CallbackValidator $validator */
+                    if ($value[0] === '.') {
+                        $validator->addMessage(
+                            $this->translate('Leading dots qare not allowed in the report name')
+                        );
+
+                        return false;
+                    }
+
+                    return true;
+                }
+            ]
         ]);
 
         $this->addElement('select', 'timeframe', [
