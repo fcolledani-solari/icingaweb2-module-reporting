@@ -96,7 +96,7 @@ class ReportController extends Controller
 
     public function editAction()
     {
-        $this->assertPermission('reporting/reports');
+        $this->assertPermission('reporting/reports/modify');
         $this->addTitleTab('Edit Report');
 
         $values = [
@@ -231,7 +231,7 @@ class ReportController extends Controller
 
         $actions = new ActionBar();
 
-        if ($this->hasPermission('reporting/reports')) {
+        if ($this->hasPermission('reporting/reports/modify')) {
             $actions->addLink(
                 'Modify',
                 Url::fromPath('reporting/report/edit', ['id' => $reportId]),

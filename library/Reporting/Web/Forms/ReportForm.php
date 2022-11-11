@@ -10,6 +10,7 @@ use Icinga\Module\Reporting\ProvidedReports;
 use Icinga\Module\Reporting\Web\Forms\Decorator\CompatDecorator;
 use ipl\Html\Contract\FormSubmitElement;
 use ipl\Html\Form;
+use ipl\Validator\CallbackValidator;
 use ipl\Web\Compat\CompatForm;
 
 class ReportForm extends CompatForm
@@ -34,8 +35,29 @@ class ReportForm extends CompatForm
         $this->setDefaultElementDecorator(new CompatDecorator());
 
         $this->addElement('text', 'name', [
-            'required' => true,
-            'label'    => 'Name'
+            'required'   => true,
+            'label'      => 'Name',
+            'validators'    => [
+                'Callback' => function ($value, $validator) {
+                    /** @var CallbackValidator $validator */
+                    $prefixes = Auth::getInstance()->getRestrictions('reporting/prefix');
+                    if (! empty($prefixes)) {
+                        foreach ($prefixes as $prefix) {
+                            if (substr($value, 0, strlen($prefix)) === $prefix) {
+                                return true;
+                            }
+                        }
+                        $validator->addMessage(sprintf(
+                            $this->translate('Please prefix the name with "%s"'),
+                            current($prefixes)
+                        ));
+
+                        return false;
+                    }
+
+                    return true;
+                }
+            ]
         ]);
 
         $this->addElement('select', 'timeframe', [

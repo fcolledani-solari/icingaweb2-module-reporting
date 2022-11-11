@@ -25,7 +25,7 @@ class ReportsController extends Controller
     {
         $this->createTabs()->activate('reports');
 
-        if ($this->hasPermission('reporting/reports')) {
+        if ($this->hasPermission('reporting/reports/modify')) {
             $this->addControl(new ButtonLink(
                 $this->translate('New Report'),
                 Url::fromPath('reporting/reports/new'),
@@ -46,22 +46,29 @@ class ReportsController extends Controller
             ]
         );
 
+        $this->applyRestriction($reports, 'report.name');
+
         foreach ($reports as $report) {
             $url = Url::fromPath('reporting/report', ['id' => $report->id])->getAbsoluteUrl('&');
 
-            $tableRows[] = Html::tag('tr', ['href' => $url], [
+            $content = [
                 Html::tag('td', null, $report->name),
                 Html::tag('td', null, $report->author),
                 Html::tag('td', null, $report->timeframe->name),
                 Html::tag('td', null, date('Y-m-d H:i', $report->ctime / 1000)),
-                Html::tag('td', null, date('Y-m-d H:i', $report->mtime / 1000)),
-                Html::tag('td', ['class' => 'icon-col'], [
+                Html::tag('td', null, date('Y-m-d H:i', $report->mtime / 1000))
+            ];
+
+            if ($this->hasPermission('reporting/reports/modify')) {
+                $content[] = Html::tag('td', ['class' => 'icon-col'], [
                     new Link(
                         new Icon('edit'),
                         Url::fromPath('reporting/report/edit', ['id' => $report->id])
                     )
-                ])
-            ]);
+                ]);
+            }
+
+            $tableRows[] = Html::tag('tr', ['href' => $url], $content);
         }
 
         if (! empty($tableRows)) {
@@ -98,7 +105,7 @@ class ReportsController extends Controller
 
     public function newAction()
     {
-        $this->assertPermission('reporting/reports');
+        $this->assertPermission('reporting/reports/modify');
         $this->addTitleTab($this->translate('New Report'));
 
         $form = new ReportForm();
