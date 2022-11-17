@@ -14,7 +14,9 @@ use Icinga\Module\Reporting\Web\Forms\ReportForm;
 use Icinga\Module\Reporting\Web\Forms\ScheduleForm;
 use Icinga\Module\Reporting\Web\Forms\SendForm;
 use Icinga\Module\Reporting\Web\Widget\CompatDropdown;
+use Icinga\Web\Notification;
 use ipl\Html\Error;
+use ipl\Sql\Select;
 use ipl\Web\Url;
 use ipl\Web\Widget\ActionBar;
 use Icinga\Util\Environment;
@@ -53,7 +55,6 @@ class ReportController extends Controller
         $this->addTitleTab('Clone Report');
 
         $values = [
-            'name'      => $this->report->getName() . ' Clone',
             'timeframe' => (string) $this->report->getTimeframe()->getId(),
         ];
 
@@ -62,13 +63,33 @@ class ReportController extends Controller
         $values['reportlet'] = $reportlet->getClass();
 
         foreach ($reportlet->getConfig() as $name => $value) {
+            if ($name === 'name' && $reportlet->getConfig()['name'] === $value) {
+                if (preg_match('/(?:Clone )+(\d+)$/', $value, $matches)) {
+                    $value = preg_replace('/\d+$/', ++$matches[1], $value);
+                } else {
+                    $value .= ' Clone 1';
+                }
+            }
+
             $values[$name] = $value;
         }
 
         $form = (new ReportForm())
             ->setSubmitButtonLabel(t('Clone Report'))
             ->populate($values)
-            ->handleRequest(ServerRequest::fromGlobals());
+            ->handleRequest($this->getServerRequest());
+
+        $reportName = $form->getPopulatedValue('name');
+
+        $select = (new Select())
+            ->from('report r')
+            ->columns('r.name');
+
+        foreach ($this->getDb()->select($select) as $report) {
+            if ($reportName === $report->name) {
+                Notification::ERROR($this->translate(sprintf('Report "%s" already exists', $report->name)));
+            }
+        }
 
         $this->redirectForm($form, 'reporting/reports');
 
