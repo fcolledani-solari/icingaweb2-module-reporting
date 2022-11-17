@@ -6,10 +6,13 @@ namespace Icinga\Module\Reporting;
 
 use DateTime;
 use Exception;
+use Icinga\Module\Icingadb\ProvidedHook\Reporting\HostSlaReport;
 use Icinga\Module\Pdfexport\PrintableHtmlDocument;
 use Icinga\Module\Reporting\Web\Widget\Template;
 use ipl\Html\HtmlDocument;
 use ipl\Sql;
+
+use function ipl\I18n\t;
 
 class Report
 {
@@ -317,6 +320,14 @@ class Report
                     $csv[] = array_merge($row->getDimensions(), $row->getValues());
                 }
 
+                $config = $reportlet->getConfig();
+                if ($config['csv-json-export'] === '1') {
+                    $total[] = $reportlet->getClass() === HostSlaReport::class
+                        ? sprintf(t('Total (%d Hosts)'), $data->count())
+                        : sprintf(t('Total (%d Services)'), $data->count());
+                    $csv[] = array_merge($total, $data->getAverages());
+                }
+
                 break;
             }
         }
@@ -335,7 +346,6 @@ class Report
 
         foreach ($this->getReportlets() as $reportlet) {
             $implementation = $reportlet->getImplementation();
-
             if ($implementation->providesData()) {
                 $data = $implementation->getData($timerange, $reportlet->getConfig());
                 $dimensions = $data->getDimensions();
@@ -343,6 +353,14 @@ class Report
                 foreach ($data->getRows() as $row) {
                     $json[] = \array_combine($dimensions, $row->getDimensions())
                         + \array_combine($values, $row->getValues());
+                }
+
+                $config = $reportlet->getConfig();
+                if ($config['csv-json-export'] === '1') {
+                    $total[] = $reportlet->getClass() === HostSlaReport::class
+                        ? sprintf(t('Total (%d Hosts)'), $data->count())
+                        : sprintf(t('Total (%d Services)'), $data->count());
+                    $json[] = array_merge($total, $data->getAverages());
                 }
 
                 break;
