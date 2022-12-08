@@ -11,6 +11,7 @@ use Icinga\Module\Reporting\Web\Controller;
 use Icinga\Module\Reporting\Web\Forms\TemplateForm;
 use Icinga\Module\Reporting\Web\Widget\Template;
 use ipl\Sql\Select;
+use ipl\Web\Widget\Tabs;
 
 class TemplateController extends Controller
 {
@@ -57,17 +58,15 @@ class TemplateController extends Controller
 
         $template->settings = json_decode($template->settings, true);
 
-        $form = (new TemplateForm())
-            ->setTemplate($template);
-
-        $form->handleRequest(ServerRequest::fromGlobals());
+        $form = TemplateForm::fromTemplate($template)
+            ->handleRequest(ServerRequest::fromGlobals());
 
         $this->redirectForm($form, 'reporting/templates');
 
         $this->addContent($form);
     }
 
-    protected function createTabs()
+    protected function createTabs(): Tabs
     {
         $tabs = $this->getTabs();
 
