@@ -16,9 +16,6 @@ class TemplateForm extends CompatForm
 {
     use Database;
 
-    /** @var bool Hack to disable the {@link onSuccess()} code upon deletion of the template */
-    protected $callOnSuccess;
-
     protected $template;
 
     public function getTemplate()
@@ -26,20 +23,40 @@ class TemplateForm extends CompatForm
         return $this->template;
     }
 
-    public function setTemplate($template)
+    /**
+     * Creates a new `TemplateForm` instance with a given template
+     *
+     * @param $template
+     *
+     * @return TemplateForm
+     */
+    public static function fromTemplate($template): TemplateForm
     {
-        $this->template = $template;
+        $form = new static();
+
+        $form->template = $template;
 
         if ($template->settings) {
-            $this->populate(array_filter($template->settings, function ($value) {
+            $form->populate(array_filter($template->settings, function ($value) {
                 // Don't populate files
                 return ! is_array($value);
             }));
         }
 
-        return $this;
+        return $form;
     }
 
+    /**
+     * @inheritDoc
+     */
+    public function hasBeenSubmitted(): bool
+    {
+        return $this->hasBeenSent() && ($this->getPopulatedValue('submit') || $this->getPopulatedValue('remove'));
+    }
+
+    /**
+     * @inheritDoc
+     */
     protected function assemble()
     {
         $this->setDefaultElementDecorator(new CompatDecorator());
@@ -131,24 +148,13 @@ class TemplateForm extends CompatForm
             ]);
             $this->registerElement($removeButton);
             $this->getElement('submit')->getWrapper()->prepend($removeButton);
-
-            if ($removeButton->hasBeenPressed()) {
-                $this->getDb()->delete('template', ['id = ?' => $this->template->id]);
-
-                // Stupid cheat because ipl/html is not capable of multiple submit buttons
-                $this->getSubmitButton()->setValue($this->getSubmitButton()->getButtonLabel());
-                $this->callOnSuccess = false;
-                $this->valid = true;
-
-                return;
-            }
         }
     }
 
     public function onSuccess()
     {
-        if ($this->callOnSuccess === false) {
-            return;
+        if ($this->getPopulatedValue('remove')) {
+            $this->getDb()->delete('template', ['id = ?' => $this->template->id]);
         }
 
         ini_set('upload_max_filesize', '10M');
