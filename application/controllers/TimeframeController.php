@@ -34,12 +34,9 @@ class TimeframeController extends Controller
         ];
 
 
-        $form = (new TimeframeForm())
-            ->setId($this->timeframe->getId());
-
-        $form->populate($values);
-
-        $form->handleRequest(ServerRequest::fromGlobals());
+        $form = TimeframeForm::fromId($this->timeframe->getId())
+            ->populate($values)
+            ->handleRequest(ServerRequest::fromGlobals());
 
         $this->redirectForm($form, 'reporting/timeframes');
 
