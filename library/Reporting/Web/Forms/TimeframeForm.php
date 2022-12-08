@@ -25,7 +25,7 @@ class TimeframeForm extends CompatForm
      *
      * @return $this
      */
-    public  static function fromId(int $id): TimeframeForm
+    public static function fromId(int $id): TimeframeForm
     {
         $form = new static();
 
