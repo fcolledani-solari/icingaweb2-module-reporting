@@ -34,17 +34,11 @@ class TimeframeForm extends CompatForm
         return $form;
     }
 
-    /**
-     * @inheritDoc
-     */
     public function hasBeenSubmitted(): bool
     {
         return $this->hasBeenSent() && ($this->getPopulatedValue('submit') || $this->getPopulatedValue('remove'));
     }
 
-    /**
-     * @inheritDoc
-     */
     protected function assemble()
     {
         $this->setDefaultElementDecorator(new CompatDecorator());
