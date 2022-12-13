@@ -11,11 +11,7 @@ class Controller extends CompatController
 {
     protected function redirectForm(Form $form, $url)
     {
-        if (
-            $form->hasBeenSubmitted()
-            && ((isset($form->valid) && $form->valid === true)
-                || $form->isValid())
-        ) {
+        if ($form->hasBeenSubmitted() && $form->isValid()) {
             $this->redirectNow($url);
         }
     }
