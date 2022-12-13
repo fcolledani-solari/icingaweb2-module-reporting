@@ -98,9 +98,11 @@ class TemplatesController extends Controller
 
         $form = new TemplateForm();
 
-        $form->handleRequest(ServerRequest::fromGlobals());
-
-        $this->redirectForm($form, 'reporting/templates');
+        $form
+            ->on(TemplateForm::ON_SUCCESS, function () {
+                $this->redirectNow('reporting/templates');
+            })
+            ->handleRequest(ServerRequest::fromGlobals());
 
         $this->addContent($form);
     }

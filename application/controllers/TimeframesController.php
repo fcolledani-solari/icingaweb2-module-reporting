@@ -95,9 +95,11 @@ class TimeframesController extends Controller
         $this->addTitleTab($this->translate('New Timeframe'));
 
         $form = new TimeframeForm();
-        $form->handleRequest(ServerRequest::fromGlobals());
-
-        $this->redirectForm($form, 'reporting/timeframes');
+        $form
+            ->on(TimeframeForm::ON_SUCCESS, function () {
+                $this->redirectNow('reporting/timeframes');
+            })
+            ->handleRequest(ServerRequest::fromGlobals());
 
         $this->addContent($form);
     }

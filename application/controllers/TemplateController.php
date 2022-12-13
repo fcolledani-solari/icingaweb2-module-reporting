@@ -59,9 +59,10 @@ class TemplateController extends Controller
         $template->settings = json_decode($template->settings, true);
 
         $form = TemplateForm::fromTemplate($template)
+            ->on(TemplateForm::ON_SUCCESS, function () {
+                $this->redirectNow('reporting/templates');
+            })
             ->handleRequest(ServerRequest::fromGlobals());
-
-        $this->redirectForm($form, 'reporting/templates');
 
         $this->addContent($form);
     }
