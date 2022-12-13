@@ -46,17 +46,11 @@ class TemplateForm extends CompatForm
         return $form;
     }
 
-    /**
-     * @inheritDoc
-     */
     public function hasBeenSubmitted(): bool
     {
         return $this->hasBeenSent() && ($this->getPopulatedValue('submit') || $this->getPopulatedValue('remove'));
     }
 
-    /**
-     * @inheritDoc
-     */
     protected function assemble()
     {
         $this->setDefaultElementDecorator(new CompatDecorator());
@@ -155,6 +149,8 @@ class TemplateForm extends CompatForm
     {
         if ($this->getPopulatedValue('remove')) {
             $this->getDb()->delete('template', ['id = ?' => $this->template->id]);
+
+            return;
         }
 
         ini_set('upload_max_filesize', '10M');
