@@ -35,25 +35,25 @@ class ReportForm extends CompatForm
 
         $this->addElement('text', 'name', [
             'required' => true,
-            'label'    => 'Name'
+            'label'    => $this->translate('Name')
         ]);
 
         $this->addElement('select', 'timeframe', [
             'required' => true,
-            'label'    => 'Timeframe',
-            'options'  => [null => 'Please choose'] + $this->listTimeframes(),
+            'label'    => $this->translate('Timeframe'),
+            'options'  => [null => $this->translate('Please choose')] + $this->listTimeframes(),
             'class'    => 'autosubmit'
         ]);
 
         $this->addElement('select', 'template', [
-            'label'   => 'Template',
-            'options' => [null => 'Please choose'] + $this->listTemplates()
+            'label'   => $this->translate('Template'),
+            'options' => [null => $this->translate('Please choose')] + $this->listTemplates()
         ]);
 
         $this->addElement('select', 'reportlet', [
             'required' => true,
-            'label'    => 'Report',
-            'options'  => [null => 'Please choose'] + $this->listReports(),
+            'label'    => $this->translate('Report'),
+            'options'  => [null => $this->translate('Please choose')] + $this->listReports(),
             'class'    => 'autosubmit'
         ]);
 
@@ -74,13 +74,13 @@ class ReportForm extends CompatForm
         }
 
         $this->addElement('submit', 'submit', [
-            'label' => $this->id === null ? 'Create Report' : 'Update Report'
+            'label' => $this->id === null ? $this->translate('Create Report') : $this->translate('Update Report')
         ]);
 
         if ($this->id !== null) {
             /** @var FormSubmitElement $removeButton */
             $removeButton = $this->createElement('submit', 'remove', [
-                'label'          => 'Remove Report',
+                'label'          => $this->translate('Remove Report'),
                 'class'          => 'btn-remove',
                 'formnovalidate' => true
             ]);
