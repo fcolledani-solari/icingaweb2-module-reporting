@@ -99,12 +99,15 @@ class ReportController extends Controller
         $this->assertPermission('reporting/schedules');
         $this->addTitleTab('Schedule');
 
-        $form = new ScheduleForm();
-        $form
+        $form = (new ScheduleForm())
             ->setReport($this->report)
-            ->handleRequest(ServerRequest::fromGlobals());
+            ->on(ScheduleForm::ON_SUCCESS, function () {
+                $this->redirectNow(Url::fromPath('reporting/report')->setParams(['id' => $this->report->getId()]));
+            })->handleRequest($this->getServerRequest());
 
-        $this->redirectForm($form, "reporting/report?id={$this->report->getId()}");
+        if (! empty($form->getPartUpdates())) {
+            $this->sendMultipartUpdate(...$form->getPartUpdates());
+        }
 
         $this->addContent($form);
     }

@@ -5,18 +5,17 @@
 namespace Icinga\Module\Reporting\Web\Forms;
 
 use DateTime;
-use Icinga\Application\Version;
+use Icinga\Application\Icinga;
 use Icinga\Authentication\Auth;
 use Icinga\Module\Reporting\Database;
 use Icinga\Module\Reporting\ProvidedActions;
 use Icinga\Module\Reporting\Report;
-use Icinga\Module\Reporting\Web\Flatpickr;
-use Icinga\Module\Reporting\Web\Forms\Decorator\CompatDecorator;
-use ipl\Html\Contract\FormSubmitElement;
+use Icinga\Web\Notification;
 use ipl\Html\Form;
-use ipl\Web\Compat\CompatForm;
+use ipl\Scheduler\RRule;
+use ipl\Web\Common\BaseScheduleForm;
 
-class ScheduleForm extends CompatForm
+class ScheduleForm extends BaseScheduleForm
 {
     use Database;
     use DecoratedElement;
@@ -25,77 +24,64 @@ class ScheduleForm extends CompatForm
     /** @var Report */
     protected $report;
 
-    protected $id;
+    protected function init(): void
+    {
+        parent::init();
+
+        $this->scheduleElement->setIdProtector([Icinga::app()->getRequest(), 'protectId']);
+    }
+
+    public function hasBeenSubmitted()
+    {
+        return $this->hasBeenSent()
+            && (
+                $this->getPopulatedValue('submit')
+                || $this->getPopulatedValue('remove')
+            );
+    }
 
     public function setReport(Report $report)
     {
         $this->report = $report;
-
         $schedule = $report->getSchedule();
-
         if ($schedule !== null) {
-            $this->setId($schedule->getId());
+            $repeat = strtoupper($schedule->getFrequency());
+            if (substr($repeat, 0, 1) === '@') {
+                $repeat = substr($repeat, 1);
+            }
 
             $values = [
-                    'start'     => $schedule->getStart()->format('Y-m-d\\TH:i:s'),
-                    'frequency' => $schedule->getFrequency(),
-                    'action'    => $schedule->getAction()
-                ] + $schedule->getConfig();
+                'start'  => $schedule->getStart(),
+                'repeat' => isset($this->regulars[$repeat]) ? $repeat : $schedule->getFrequency(),
+                'action' => $schedule->getAction()
+            ];
 
-            $this->populate($values);
+            $config = $schedule->getConfig();
+            if ($schedule->getFrequency() === static::CUSTOM_EXPR && isset($config['rrule'])) {
+                $rrule = new RRule($config['rrule'], $schedule->getStart());
+                $this->scheduleElement->setStart($schedule->getStart());
+
+                $values['schedule-element'] = $this->scheduleElement->loadRRule($rrule);
+                unset($config['rrule']);
+            }
+
+            $this->populate(array_merge($values, $config));
         }
-
-        return $this;
-    }
-
-    public function setId($id)
-    {
-        $this->id = $id;
 
         return $this;
     }
 
     protected function assemble()
     {
-        $this->setDefaultElementDecorator(new CompatDecorator());
-
-        $frequency = [
-            'minutely' => 'Minutely',
-            'hourly'   => 'Hourly',
-            'daily'    => 'Daily',
-            'weekly'   => 'Weekly',
-            'monthly'  => 'Monthly'
-        ];
-
-        if (version_compare(Version::VERSION, '2.9.0', '>=')) {
-            $this->addElement('localDateTime', 'start', [
-                'required'    => true,
-                'label'       => t('Start'),
-                'placeholder' => t('Choose date and time')
-            ]);
-        } else {
-            $this->addDecoratedElement((new Flatpickr())->setAllowInput(false), 'text', 'start', [
-                'required'    => true,
-                'label'       => t('Start'),
-                'placeholder' => t('Choose date and time')
-            ]);
-        }
-
-        $this->addElement('select', 'frequency', [
-            'required' => true,
-            'label'    => 'Frequency',
-            'options'  => [null => 'Please choose'] + $frequency,
-        ]);
-
         $this->addElement('select', 'action', [
-            'required' => true,
-            'label'    => 'Action',
-            'options'  => [null => 'Please choose'] + $this->listActions(),
-            'class'    => 'autosubmit'
+            'required'    => true,
+            'class'       => 'autosubmit',
+            'options'     => array_merge([null => $this->translate('Please choose')], $this->listActions()),
+            'label'       => $this->translate('Action'),
+            'description' => $this->translate('Specifies an action to be triggered by the scheduler')
         ]);
 
         $values = $this->getValues();
-
         if (isset($values['action'])) {
             $config = new Form();
 //            $config->populate($this->getValues());
@@ -110,12 +96,15 @@ class ScheduleForm extends CompatForm
             }
         }
 
+        $this->assembleCommonParts();
+        $this->assembleScheduleRecurrence();
+
+        $schedule = $this->report->getSchedule();
         $this->addElement('submit', 'submit', [
-            'label' => $this->id === null ? 'Create Schedule' : 'Update Schedule'
+            'label' => $schedule === null ? $this->translate('Create Schedule') : $this->translate('Update Schedule')
         ]);
 
-        if ($this->id !== null) {
-            /** @var FormSubmitElement $removeButton */
+        if ($schedule !== null) {
             $removeButton = $this->createElement('submit', 'remove', [
                 'label'          => 'Remove Schedule',
                 'class'          => 'btn-remove',
@@ -123,56 +112,73 @@ class ScheduleForm extends CompatForm
             ]);
             $this->registerElement($removeButton);
             $this->getElement('submit')->getWrapper()->prepend($removeButton);
-
-            if ($removeButton->hasBeenPressed()) {
-                $this->getDb()->delete('schedule', ['id = ?' => $this->id]);
-
-                // Stupid cheat because ipl/html is not capable of multiple submit buttons
-                $this->getSubmitButton()->setValue($this->getSubmitButton()->getButtonLabel());
-                $this->valid = true;
-
-                return;
-            }
         }
     }
 
     public function onSuccess()
     {
         $db = $this->getDb();
+        $schedule = $this->report->getSchedule();
+
+        if ($this->getPressedSubmitElement()->getName() === 'remove') {
+            $db->delete('schedule', ['id = ?' => $schedule->getId()]);
+
+            Notification::success('Removed schedule successfully');
+
+            return;
+        }
 
         $values = $this->getValues();
-
         $now = time() * 1000;
-
         if (! $values['start'] instanceof DateTime) {
             $values['start'] = DateTime::createFromFormat('Y-m-d H:i:s', $values['start']);
         }
 
+        $repeat = $values['repeat'];
+        $repeat = ! isset($this->regulars[$repeat]) ? $repeat : strtolower($repeat);
         $data = [
             'start'     => $values['start']->getTimestamp() * 1000,
-            'frequency' => $values['frequency'],
+            'frequency' => $repeat,
             'action'    => $values['action'],
             'mtime'     => $now
         ];
 
         unset($values['start']);
-        unset($values['frequency']);
+        unset($values['repeat']);
         unset($values['action']);
+
+        if (array_key_exists('schedule-recurrences', $values)) {
+            unset($values['schedule-recurrences']);
+        }
+
+        if ($repeat === static::CUSTOM_EXPR) {
+            unset($values['schedule-element']);
+            $values['rrule'] = $this->scheduleElement->getRRule()->getRuleString();
+        }
 
         $data['config'] = json_encode($values);
 
         $db->beginTransaction();
 
-        if ($this->id === null) {
-            $db->insert('schedule', $data + [
+        if ($schedule === null) {
+            $db->insert(
+                'schedule',
+                $data + [
                     'author'    => Auth::getInstance()->getUser()->getUsername(),
                     'report_id' => $this->report->getId(),
                     'ctime'     => $now
-                ]);
+                ]
+            );
         } else {
-            $db->update('schedule', $data, ['id = ?' => $this->id]);
+            $db->update('schedule', $data, ['id = ?' => $schedule->getId()]);
         }
 
         $db->commitTransaction();
+
+        $message = $this->report->getSchedule()
+            ? $this->translate('Updated schedule successfully')
+            : $this->translate('Created schedule successfully');
+
+        Notification::success($message);
     }
 }
