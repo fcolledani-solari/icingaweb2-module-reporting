@@ -19,11 +19,7 @@ class ListCommand extends Command
     public function indexAction()
     {
         $sort = $this->params->get('sort', 'r.mtime');
-
-        $direction = $this->params->get('direction', 'DESC');
-        if ($direction !== 'ASC' && $direction !== 'DESC') {
-            throw new InvalidArgumentException(sprintf('Invalid sort direction provided: %s', $direction));
-        }
+        $direction = $this->params->get('direction', 'ASC');
 
         $select = (new Select())
             ->from('report r')
