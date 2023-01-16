@@ -10,6 +10,8 @@ use Icinga\Module\Reporting\ProvidedReports;
 use Icinga\Module\Reporting\Web\Forms\Decorator\CompatDecorator;
 use ipl\Html\Contract\FormSubmitElement;
 use ipl\Html\Form;
+use ipl\Sql\Expression;
+use ipl\Sql\Select;
 use ipl\Web\Compat\CompatForm;
 
 class ReportForm extends CompatForm
@@ -116,6 +118,28 @@ class ReportForm extends CompatForm
                 return;
             }
         }
+    }
+
+    public function validate()
+    {
+        parent::validate();
+
+        if (! $this->isValid) {
+            return false;
+        }
+
+        $select = (new Select())
+            ->from('report r')
+            ->columns(new Expression('1'))
+            ->where(['r.name = ?' => $this->getValue('name')]);
+
+        if ($this->getDb()->select($select)->fetch() !== false) {
+            $this->addMessage($this->translate(sprintf('Report "%s" already exists', $this->getValue('name'))));
+
+            $this->isValid = false;
+        }
+
+        return $this;
     }
 
     public function onSuccess()

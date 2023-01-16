@@ -14,9 +14,7 @@ use Icinga\Module\Reporting\Web\Forms\ReportForm;
 use Icinga\Module\Reporting\Web\Forms\ScheduleForm;
 use Icinga\Module\Reporting\Web\Forms\SendForm;
 use Icinga\Module\Reporting\Web\Widget\CompatDropdown;
-use Icinga\Web\Notification;
 use ipl\Html\Error;
-use ipl\Sql\Select;
 use ipl\Web\Url;
 use ipl\Web\Widget\ActionBar;
 use Icinga\Util\Environment;
@@ -78,18 +76,6 @@ class ReportController extends Controller
             ->setSubmitButtonLabel(t('Clone Report'))
             ->populate($values)
             ->handleRequest($this->getServerRequest());
-
-        $reportName = $form->getPopulatedValue('name');
-
-        $select = (new Select())
-            ->from('report r')
-            ->columns('r.name');
-
-        foreach ($this->getDb()->select($select) as $report) {
-            if ($reportName === $report->name) {
-                Notification::ERROR($this->translate(sprintf('Report "%s" already exists', $report->name)));
-            }
-        }
 
         $this->redirectForm($form, 'reporting/reports');
 
